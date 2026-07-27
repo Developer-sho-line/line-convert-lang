@@ -21,6 +21,7 @@ app = Flask(__name__)
 # 環境変数
 LINE_CHANNEL_SECRET = os.environ["LINE_CHANNEL_SECRET"]
 LINE_CHANNEL_ACCESS_TOKEN = os.environ["LINE_CHANNEL_ACCESS_TOKEN"]
+LINE_USER_ID= os.environ["LINE_USER_ID"]
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
 
 # LINE
@@ -32,6 +33,9 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 # Gemini
 client = genai.Client(api_key=GEMINI_API_KEY)
+
+# Language
+LANGUAGES = ["#猛虎弁", "#関西弁", "#英語", "#土佐弁", "#博多弁", "#津軽弁"]
 
 
 @app.route("/")
@@ -60,14 +64,43 @@ def handle_message(event):
 
     user_message = event.message.text
 
+    mentionees = getattr(event.message.mention, "mentionees", None) or []
+    has_my_request = any(m.user_id == LINE_USER_ID for m in mentionees)
+
+    if not bool(has_my_request):
+        return
+
+    target_lang = None
+    # テキスト内に各言語・方言が含まれているか走査
+    for lang in LANGUAGES:
+        if lang in user_message:
+            target_lang = lang
+            break  # 最初に見つかった時点でループを抜ける
+
     try:
 
-        response = client.models.generate_content(
-            model="gemini-3.6-flash",
-            contents=user_message,
-        )
+        ai_text = ""
 
-        ai_text = response.text
+        if target_lang:
+            print(f"見つかった言語: {target_lang}")
+            request_text = (
+                f"下記の言語を{target_lang}に翻訳してください。\n"
+                f"解説や提案などの余計な言葉は不要です。\n"
+                f"また一番方言色が強い言い方にしてください。\n"
+                f"\" {user_message} \""
+            )
+            response = client.models.generate_content(
+                model="gemini-3.6-flash",
+                contents=request_text,
+            )
+            ai_text = response.text
+        else:
+            supported_langs = ", ".join(LANGUAGES)
+            ai_text = (
+                f"対応している言語が見つかりませんでした。\n"
+                f"以下の対応言語から指定してください：\n"
+                f"【 {supported_langs} 】"
+            )
 
     except Exception as e:
         app.logger.exception("Gemini API error: %s", e)
