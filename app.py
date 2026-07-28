@@ -35,7 +35,7 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 # Language
-LANGUAGES = ["#猛虎弁", "#関西弁", "#英語", "#土佐弁", "#博多弁", "#津軽弁"]
+LANGUAGES = ["#猛虎弁", "#関西弁", "#英語", "#土佐弁", "#博多弁", "#津軽弁", "#うちなーぐち", "#古典", "地獄のミサワ"]
 
 
 @app.route("/")
